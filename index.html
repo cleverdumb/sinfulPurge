@@ -1,0 +1,306 @@
+<html>
+    <head>
+        <title>Sinful Purge</title>
+    </head>
+    <style>
+        body {
+            margin: 0px;
+            padding: 0px;
+        }
+    </style>
+    <body>
+        <canvas id='cvs'></canvas>
+        <script>
+            const cvs = document.getElementById('cvs');
+            const ctx = cvs.getContext('2d');
+
+            let cw = window.innerWidth;
+            let ch = window.innerHeight;
+
+            cvs.width = cw;
+            cvs.height = ch;
+
+            let pl = {
+                x: 100,
+                y: 100,
+                r: 15,
+                mvSpd: 0.08,
+                vx: 0,
+                vy: 0,
+                dec: 0.03,
+                maxSpd: 0.4
+            };
+
+            // let lastTick = 0;
+
+            function dis(p, q) {
+                let pdx, pdy, qdx, qdy;
+                if (p.type == 'C') {
+                    pdx = p.x;
+                    pdy = p.y;
+                }
+                else if (p.type == 'A') {
+                    pdx = p.x + p.w/2;
+                    pdy = p.y + p.h/2;
+                }
+
+                if (q.type == 'C') {
+                    qdx = q.x;
+                    qdy = q.y;
+                }
+                else if (q.type == 'A') {
+                    qdx = q.x + q.w/2;
+                    qdy = q.y + q.h/2;
+                }
+                return Math.hypot(qdx-pdx, qdy-pdy);
+            }
+
+            class Vector {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                }
+                toUnit() {
+                    return new Vector(this.x / Math.hypot(this.x, this.y), this.y / Math.hypot(this.x, this.y));
+                }
+                scale(sf) {
+                    this.x *= sf;
+                    this.y *= sf;
+
+                    return this;
+                }
+            }
+
+            function fromTo(from, to) {
+                return new Vector(to.x - from.x, to.y - from.y);
+            }
+
+            function collide(p, q) {
+                // C = Circle, A = AABB
+
+                if (p.type == 'C') {
+                    if (q.type == 'C') {
+                        return dis(p, q) <= (p.r + q.r);
+                    }
+                }
+                else if (p.type == 'A') {
+                    if (q.type == 'A') {
+                        return p.x < (q.x + q.w) && (p.x + p.w) > q.x && p.y < (q.y + q.h) && (p.y + p.h) > q.y;
+                    }
+                }
+            }
+
+            let entities = [];
+
+            class PlayerBullet {
+                constructor(x, y, vx, vy, r, c) {
+                    this.x = x;
+                    this.y = y;
+                    this.vx = vx;
+                    this.vy = vy;
+
+                    this.type = 'C';
+
+                    this.r = r;
+                    this.color = c;
+                }
+                tick(dt) {
+                    this.x += this.vx * dt;
+                    this.y += this.vy * dt;
+                }
+                render() {
+                    circle(this.x, this.y, this.r, this.color);
+                }
+            }
+
+            function playerMovement(dt) {
+                if (keys.d) {
+                    if (keys.w) {
+                        // pl.x += pl.mvSpd/Math.sqrt(2);
+                        // pl.y -= pl.mvSpd/Math.sqrt(2);
+                        pl.vx += pl.mvSpd/Math.sqrt(2);
+                        pl.vx = Math.min(pl.vx, pl.maxSpd);
+
+                        pl.vy += -pl.mvSpd/Math.sqrt(2);
+                        pl.vy = Math.max(pl.vy, -pl.maxSpd);
+                    }
+                    else if (keys.s) {
+                        // pl.x += pl.mvSpd/Math.sqrt(2);
+                        // pl.y += pl.mvSpd/Math.sqrt(2);
+
+                        pl.vx += pl.mvSpd/Math.sqrt(2);
+                        pl.vx = Math.min(pl.vx, pl.maxSpd);
+
+                        pl.vy += pl.mvSpd/Math.sqrt(2);
+                        pl.vy = Math.min(pl.vy, pl.maxSpd);
+                    }
+                    else {
+                        // pl.x += pl.mvSpd;
+                        pl.vx += pl.mvSpd;
+                        pl.vx = Math.min(pl.vx, pl.maxSpd);
+
+                        if (pl.vy > 0) {
+                            pl.vy -= pl.dec;
+                            pl.vy = Math.max(0, pl.vy);
+                        }
+                        else {
+                            pl.vy += pl.dec;
+                            pl.vy = Math.min(0, pl.vy);
+                        }
+                    }
+                }
+                else if (keys.a) {
+                    if (keys.w) {
+                        // pl.x -= pl.mvSpd/Math.sqrt(2);
+                        // pl.y -= pl.mvSpd/Math.sqrt(2);
+
+                        pl.vx += -pl.mvSpd/Math.sqrt(2);
+                        pl.vx = Math.max(pl.vx, -pl.maxSpd);
+
+                        pl.vy += -pl.mvSpd/Math.sqrt(2);
+                        pl.vy = Math.max(pl.vy, -pl.maxSpd);
+                    }
+                    else if (keys.s) {
+                        // pl.x -= pl.mvSpd/Math.sqrt(2);
+                        // pl.y += pl.mvSpd/Math.sqrt(2);
+
+                        pl.vx += -pl.mvSpd/Math.sqrt(2);
+                        pl.vx = Math.max(pl.vx, -pl.maxSpd);
+
+                        pl.vy += pl.mvSpd/Math.sqrt(2);
+                        pl.vy = Math.min(pl.vy, pl.maxSpd);
+                    }
+                    else {
+                        // pl.x -= pl.mvSpd;
+
+                        pl.vx += -pl.mvSpd;
+                        pl.vx = Math.max(pl.vx, -pl.maxSpd);
+
+                        if (pl.vy > 0) {
+                            pl.vy -= pl.dec;
+                            pl.vy = Math.max(0, pl.vy);
+                        }
+                        else {
+                            pl.vy += pl.dec;
+                            pl.vy = Math.min(0, pl.vy);
+                        }
+                    }
+                }
+                else if (keys.w) {
+                    // pl.y -= pl.mvSpd;
+
+                    pl.vy += -pl.mvSpd;
+                    pl.vy = Math.max(pl.vy, -pl.maxSpd);
+
+                    if (pl.vx > 0) {
+                        pl.vx -= pl.dec;
+                        pl.vx = Math.max(0, pl.vx);
+                    }
+                    else {
+                        pl.vx += pl.dec;
+                        pl.vx = Math.min(0, pl.vx);
+                    }
+                }
+                else if (keys.s) {
+                    // pl.y += pl.mvSpd;
+
+                    pl.vy += pl.mvSpd;
+                    pl.vy = Math.min(pl.vy, pl.maxSpd);
+
+                    if (pl.vx > 0) {
+                        pl.vx -= pl.dec;
+                        pl.vx = Math.max(0, pl.vx);
+                    }
+                    else {
+                        pl.vx += pl.dec;
+                        pl.vx = Math.min(0, pl.vx);
+                    }
+                }
+                else {
+                    if (pl.vx > 0) {
+                        pl.vx -= pl.dec;
+                        pl.vx = Math.max(0, pl.vx);
+                    }
+                    else {
+                        pl.vx += pl.dec;
+                        pl.vx = Math.min(0, pl.vx);
+                    }
+
+                    if (pl.vy > 0) {
+                        pl.vy -= pl.dec;
+                        pl.vy = Math.max(0, pl.vy);
+                    }
+                    else {
+                        pl.vy += pl.dec;
+                        pl.vy = Math.min(0, pl.vy);
+                    }
+                    // pl.vy -= pl.dec;
+
+                    // pl.vx = Math.max(pl.vx, 0);
+                    // pl.vy = Math.max(pl.vy, 0);
+                }
+
+                pl.x += pl.vx * dt;
+                pl.y += pl.vy * dt;
+            }
+
+            function tick(dt) {
+                // entities.push(new PlayerBullet(pl.x, pl.y, pl.vx, pl.vy, 5, 'blue'))
+                playerMovement(dt);
+                entities.forEach(x=>{
+                    x.tick(dt);
+                })
+            }
+
+            function circle(x, y, r, c) {
+                // console.log(x, y, r, c);
+                ctx.fillStyle = c;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, 2*Math.PI);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            function render() {
+                // ctx.clearRect(0, 0, cw, ch);
+                ctx.fillStyle = 'black';
+                ctx.fillRect(0, 0, cw, ch);
+
+                // ctx.fillStyle = 'red';
+                // ctx.fillRect(pl.x, pl.y, 30, 30);
+
+                circle(pl.x, pl.y, pl.r, 'white');
+
+                // circle(pl.x, pl.y, pl.r, 'black');
+
+                entities.forEach(x=>{
+                    x.render();
+                })
+            }
+
+            let lastTick = 0;
+
+            function animate(dtIn) {
+                let dt = dtIn-lastTick;
+                lastTick = dtIn;
+
+                tick(dt);
+                render();
+
+                requestAnimationFrame(animate);
+            }
+
+            let keys = {};
+
+            window.addEventListener('keydown', e=>{
+                keys[e.key] = true;
+            })
+
+            window.addEventListener('keyup', e=>{
+                keys[e.key] = false;
+            })
+
+            animate(0);
+        </script>
+    </body>
+</html>
