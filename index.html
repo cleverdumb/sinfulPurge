@@ -10,6 +10,7 @@
     </style>
     <body>
         <canvas id='cvs'></canvas>
+        <script src='wrath.js'></script>
         <script>
             const cvs = document.getElementById('cvs');
             const ctx = cvs.getContext('2d');
@@ -27,9 +28,21 @@
                 mvSpd: 0.08,
                 vx: 0,
                 vy: 0,
-                dec: 0.03,
+                dec: 0.04,
                 maxSpd: 0.4
             };
+
+            const screens = {
+                SELECT: 0,
+                WRATH: 1
+            }
+            let currentScreen = screens.WRATH;
+
+            let sinPos = {x: 200, y: 200};
+            let sinSize = {w: 100, h: 100};
+            let sinInfo = {};
+
+            let timeElapsed = 0;
 
             // let lastTick = 0;
 
@@ -71,8 +84,36 @@
                 }
             }
 
-            function fromTo(from, to) {
-                return new Vector(to.x - from.x, to.y - from.y);
+            function fromTo(fromX, fromY, toX, toY) {
+                return new Vector(toX - fromX, toY - fromY);
+            }
+
+            function fromToObj(from, to) {
+                return new Vector(to.x - from.x, to.y, from.y)
+            }
+
+            function isOOBc(c) {
+                return (c.x + c.r <= 0) || (c.x - c.r >= cw) || (c.y + c.r <= 0) || (c.y - c.r >= ch);
+            }
+
+            class Projectile {
+                constructor(data) {
+                    this.data = data;
+                    this.needDelete = false;
+                }
+                render() {
+                    circle(this.data.x, this.data.y, this.data.r, this.data.color);
+                }
+                tick(dt) {
+                    // console.log(this.data.vec);
+
+                    this.data.x += this.data.vec.x * dt;
+                    this.data.y += this.data.vec.y * dt;
+
+                    if (isOOBc(this.data)) {
+                        this.needDelete = true;
+                    }
+                }
             }
 
             function collide(p, q) {
@@ -119,20 +160,20 @@
                         // pl.x += pl.mvSpd/Math.sqrt(2);
                         // pl.y -= pl.mvSpd/Math.sqrt(2);
                         pl.vx += pl.mvSpd/Math.sqrt(2);
-                        pl.vx = Math.min(pl.vx, pl.maxSpd);
+                        pl.vx = Math.min(pl.vx, pl.maxSpd / Math.sqrt(2));
 
                         pl.vy += -pl.mvSpd/Math.sqrt(2);
-                        pl.vy = Math.max(pl.vy, -pl.maxSpd);
+                        pl.vy = Math.max(pl.vy, -pl.maxSpd / Math.sqrt(2));
                     }
                     else if (keys.s) {
                         // pl.x += pl.mvSpd/Math.sqrt(2);
                         // pl.y += pl.mvSpd/Math.sqrt(2);
 
                         pl.vx += pl.mvSpd/Math.sqrt(2);
-                        pl.vx = Math.min(pl.vx, pl.maxSpd);
+                        pl.vx = Math.min(pl.vx, pl.maxSpd / Math.sqrt(2));
 
                         pl.vy += pl.mvSpd/Math.sqrt(2);
-                        pl.vy = Math.min(pl.vy, pl.maxSpd);
+                        pl.vy = Math.min(pl.vy, pl.maxSpd / Math.sqrt(2));
                     }
                     else {
                         // pl.x += pl.mvSpd;
@@ -155,20 +196,20 @@
                         // pl.y -= pl.mvSpd/Math.sqrt(2);
 
                         pl.vx += -pl.mvSpd/Math.sqrt(2);
-                        pl.vx = Math.max(pl.vx, -pl.maxSpd);
+                        pl.vx = Math.max(pl.vx, -pl.maxSpd / Math.sqrt(2));
 
                         pl.vy += -pl.mvSpd/Math.sqrt(2);
-                        pl.vy = Math.max(pl.vy, -pl.maxSpd);
+                        pl.vy = Math.max(pl.vy, -pl.maxSpd / Math.sqrt(2));
                     }
                     else if (keys.s) {
                         // pl.x -= pl.mvSpd/Math.sqrt(2);
                         // pl.y += pl.mvSpd/Math.sqrt(2);
 
                         pl.vx += -pl.mvSpd/Math.sqrt(2);
-                        pl.vx = Math.max(pl.vx, -pl.maxSpd);
+                        pl.vx = Math.max(pl.vx, -pl.maxSpd / Math.sqrt(2));
 
                         pl.vy += pl.mvSpd/Math.sqrt(2);
-                        pl.vy = Math.min(pl.vy, pl.maxSpd);
+                        pl.vy = Math.min(pl.vy, pl.maxSpd / Math.sqrt(2));
                     }
                     else {
                         // pl.x -= pl.mvSpd;
@@ -242,14 +283,39 @@
 
                 pl.x += pl.vx * dt;
                 pl.y += pl.vy * dt;
+
+                if (pl.x - pl.r < 0) {
+                    pl.x = pl.r;
+                }
+                if (pl.x + pl.r > cw) {
+                    pl.x = cw - pl.r;
+                }
+                if (pl.y - pl.r < 0) {
+                    pl.y = pl.r;
+                }
+                if (pl.y + pl.r > ch) {
+                    pl.y = ch - pl.r;
+                }
             }
 
+            let ticks = [
+                ()=>{
+
+                },
+                wrathTick
+            ]
+            
             function tick(dt) {
                 // entities.push(new PlayerBullet(pl.x, pl.y, pl.vx, pl.vy, 5, 'blue'))
                 playerMovement(dt);
+                // console.log(entities.forEach);
                 entities.forEach(x=>{
                     x.tick(dt);
-                })
+                });
+                
+                entities = entities.filter(x=>!x.needDelete);
+
+                (ticks[currentScreen])(dt)
             }
 
             function circle(x, y, r, c) {
@@ -261,21 +327,27 @@
                 ctx.fill();
             }
 
+            const renders = [
+                ()=>{
+                    circle(pl.x, pl.y, pl.r, 'white');
+                },
+                ()=>{
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(sinPos.x, sinPos.y, sinSize.w, sinSize.h);
+
+                    entities.forEach(x=>{
+                        x.render();
+                    })
+
+                    circle(pl.x, pl.y, pl.r, 'white');
+                }
+            ]
+
             function render() {
-                // ctx.clearRect(0, 0, cw, ch);
                 ctx.fillStyle = 'black';
                 ctx.fillRect(0, 0, cw, ch);
 
-                // ctx.fillStyle = 'red';
-                // ctx.fillRect(pl.x, pl.y, 30, 30);
-
-                circle(pl.x, pl.y, pl.r, 'white');
-
-                // circle(pl.x, pl.y, pl.r, 'black');
-
-                entities.forEach(x=>{
-                    x.render();
-                })
+                (renders[currentScreen])();
             }
 
             let lastTick = 0;
@@ -283,6 +355,8 @@
             function animate(dtIn) {
                 let dt = dtIn-lastTick;
                 lastTick = dtIn;
+
+                timeElapsed += dt;
 
                 tick(dt);
                 render();
@@ -300,6 +374,7 @@
                 keys[e.key] = false;
             })
 
+            wrathInit();
             animate(0);
         </script>
     </body>
