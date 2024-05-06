@@ -29,7 +29,11 @@
                 vx: 0,
                 vy: 0,
                 dec: 0.04,
-                maxSpd: 0.4
+                maxSpd: 0.4,
+                highSpd: 0.08,
+                lowSpd: 0.06,
+                highMaxSpd: 0.4,
+                lowMaxSpd: 0.3
             };
 
             const screens = {
@@ -155,6 +159,9 @@
             }
 
             function playerMovement(dt) {
+                pl.maxSpd = keys[' '] ? pl.lowMaxSpd : pl.highMaxSpd;
+                pl.mvSpd = keys[' '] ? pl.lowSpd : pl.highSpd;
+
                 if (keys.d) {
                     if (keys.w) {
                         // pl.x += pl.mvSpd/Math.sqrt(2);
