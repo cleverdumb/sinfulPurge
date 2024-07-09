@@ -46,6 +46,8 @@
             let sinSize = {w: 100, h: 100};
             let sinInfo = {};
 
+            let bullets = [];
+
             let timeElapsed = 0;
 
             // let lastTick = 0;
@@ -72,13 +74,13 @@
                 return Math.hypot(qdx-pdx, qdy-pdy);
             }
 
-            class Vector {
+            class V {
                 constructor(x, y) {
                     this.x = x;
                     this.y = y;
                 }
                 toUnit() {
-                    return new Vector(this.x / Math.hypot(this.x, this.y), this.y / Math.hypot(this.x, this.y));
+                    return new V(this.x / Math.hypot(this.x, this.y), this.y / Math.hypot(this.x, this.y));
                 }
                 scale(sf) {
                     this.x *= sf;
@@ -89,13 +91,14 @@
             }
 
             function fromTo(fromX, fromY, toX, toY) {
-                return new Vector(toX - fromX, toY - fromY);
+                return new V(toX - fromX, toY - fromY);
             }
 
             function fromToObj(from, to) {
-                return new Vector(to.x - from.x, to.y, from.y)
+                return new V(to.x - from.x, to.y, from.y)
             }
 
+            // is out of bounds
             function isOOBc(c) {
                 return (c.x + c.r <= 0) || (c.x - c.r >= cw) || (c.y + c.r <= 0) || (c.y - c.r >= ch);
             }
@@ -106,7 +109,9 @@
                     this.needDelete = false;
                 }
                 render() {
-                    circle(this.data.x, this.data.y, this.data.r, this.data.color);
+                    if (this.data.type == 'C') {
+                        circle(this.data.x, this.data.y, this.data.r, this.data.color);
+                    }
                 }
                 tick(dt) {
                     // console.log(this.data.vec);
@@ -117,6 +122,55 @@
                     if (isOOBc(this.data)) {
                         this.needDelete = true;
                     }
+
+                    // console.log(bullets);
+                    bullets.forEach(x=>{
+                        if (collide(this.data, x)) {
+                            this.needDelete = true;
+                        }
+                    })
+                }
+            }
+
+            class PolarProjectile {
+                constructor(data) {
+                    this.data = data;
+                    this.needDelete = false;
+                    
+                    this.r = this.data.start.rad;
+                    this.theta = this.data.start.theta;
+                }
+                render() {
+                    if (this.data.type == 'C') {
+                        circle(this.data.x, this.data.y, this.data.r, this.data.color);
+                    }
+                }
+                tick(dt) {
+                    // this.elapsed += dt;
+                    let res = (this.data.func)(dt, this.r, this.theta);
+                    this.r += res.dr;
+                    this.theta += res.dtheta;
+
+                    this.data.x = this.data.origin.x - Math.sin(this.theta) * this.r;
+                    this.data.y = this.data.origin.y + Math.cos(this.theta) * this.r;
+
+                    // console.log(this.elapsed);
+                    // if (this.elapsed >= this.data.lifespan) {
+                    //     this.needDelete = true;
+                    // }
+                    // if (this.r > Math.SQRT2*Math.max(cw, ch)) {
+                    //     this.needDelete = true;
+                    // }
+
+                    if (isOOBc(this.data)) {
+                        this.needDelete = true;
+                    }
+
+                    bullets.forEach(x=>{
+                        if (collide(this, x)) {
+                            this.needDelete = true;
+                        }
+                    })
                 }
             }
 
@@ -148,10 +202,16 @@
 
                     this.r = r;
                     this.color = c;
+
+                    this.needDelete = false;
                 }
                 tick(dt) {
                     this.x += this.vx * dt;
                     this.y += this.vy * dt;
+
+                    if (isOOBc(this)) {
+                        this.needDelete = true;
+                    }
                 }
                 render() {
                     circle(this.x, this.y, this.r, this.color);
@@ -322,6 +382,12 @@
                 
                 entities = entities.filter(x=>!x.needDelete);
 
+                bullets.forEach(x=>{
+                    x.tick(dt);
+                })
+
+                bullets = bullets.filter(x=>!x.needToDelete);
+
                 (ticks[currentScreen])(dt)
             }
 
@@ -343,6 +409,10 @@
                     ctx.fillRect(sinPos.x, sinPos.y, sinSize.w, sinSize.h);
 
                     entities.forEach(x=>{
+                        x.render();
+                    })
+
+                    bullets.forEach(x=>{
                         x.render();
                     })
 
@@ -379,6 +449,18 @@
 
             window.addEventListener('keyup', e=>{
                 keys[e.key] = false;
+            })
+
+            let playerBulletSpeed = 0.3;
+            let playerBulletRadius = 5;
+            cvs.addEventListener('mousedown', e=>{
+                let x = e.clientX - cvs.getBoundingClientRect().x;
+                let y = e.clientY - cvs.getBoundingClientRect().y;
+                
+                let toClick = fromTo(pl.x, pl.y, x, y);
+                let vel = toClick.toUnit().scale(playerBulletSpeed);
+
+                bullets.push(new PlayerBullet(pl.x, pl.y, vel.x, vel.y, playerBulletRadius, 'lime'));
             })
 
             wrathInit();
