@@ -35,7 +35,7 @@
                 highMaxSpd: 0.4,
                 lowMaxSpd: 0.3,
                 type: 'C',
-                bulletMass: 20
+                bulletMass: 25
             };
 
             const screens = {
@@ -51,6 +51,15 @@
             let bullets = [];
 
             let timeElapsed = 0;
+
+            function* uniqueIDgen() {
+                let id = 0;
+                while (true) {
+                    yield id++;
+                }
+            }
+
+            const uniqueID = uniqueIDgen();
 
             // let lastTick = 0;
 
@@ -109,6 +118,8 @@
                 constructor(data) {
                     this.data = data;
                     this.data.needDelete = false;
+                    this.data.id = uniqueID.next().value;
+                    console.log(this.data.id);
                 }
                 render() {
                     if (this.data.type == 'C') {
@@ -155,6 +166,14 @@
                             (this.data.onHitSin)(this.data);
                         }
                     }
+
+                    if (this.data.onHitEntity) {
+                        entities.forEach(x=>{
+                            if (collide(this.data, x.data) && this.data.id != x.data.id) {
+                                (this.data.onHitEntity)(this.data, x.data);
+                            }
+                        })
+                    }
                 }
             }
 
@@ -162,6 +181,7 @@
                 constructor(data) {
                     this.data = data;
                     this.data.needDelete = false;
+                    this.data.id = uniqueID.next().value;
                     
                     this.r = this.data.start.rad;
                     this.theta = this.data.start.theta;
@@ -219,6 +239,14 @@
                         if (collideSin(this.data)) {
                             (this.data.onHitSin)(this.data);
                         }
+                    }
+
+                    if (this.data.onHitEntity) {
+                        entities.forEach(x=>{
+                            if (collide(this.data, x.data) && this.data.id != x.data.id) {
+                                (this.data.onHitEntity)(this.data, x.data);
+                            }
+                        })
                     }
                 }
             }

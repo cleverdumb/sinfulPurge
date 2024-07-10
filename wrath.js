@@ -30,7 +30,15 @@ function wrathTick(dt) {
                     proj.needDelete = true;
                 }
             },
-            mass: 40
+            mass: 40,
+            sig: 'cannonball',
+            onHitEntity: (proj, ent) => {
+                if (ent.sig == 'cannonball' && proj.canDamageSin) {
+                    console.log('boom');
+                    proj.needDelete = true;
+                    ent.needDelete = true;
+                }
+            }
         }))
         entities.push(new Projectile({
             type: 'C',
@@ -39,7 +47,8 @@ function wrathTick(dt) {
             r: 12,
             vec: fromTo(sinPos.x, sinPos.y, pl.x, pl.y).toUnit().scale(0.25),
             color: 'orange',
-            destructable: false
+            destructable: false,
+            sig: 'bigBomb'
         }))
 
         let randOff = Math.random()*(2*Math.PI);
@@ -52,7 +61,8 @@ function wrathTick(dt) {
                 r: 5,
                 vec: new V(Math.cos(2*Math.PI*(x/randAmt) + randOff), Math.sin(2*Math.PI*(x/randAmt) + randOff)).scale(0.2),
                 color: 'red',
-                destructable: true
+                destructable: true,
+                sig: 'shards'
             }))
         }
 
