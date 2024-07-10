@@ -33,7 +33,9 @@
                 highSpd: 0.08,
                 lowSpd: 0.06,
                 highMaxSpd: 0.4,
-                lowMaxSpd: 0.3
+                lowMaxSpd: 0.3,
+                type: 'C',
+                bulletMass: 20
             };
 
             const screens = {
@@ -106,7 +108,7 @@
             class Projectile {
                 constructor(data) {
                     this.data = data;
-                    this.needDelete = false;
+                    this.data.needDelete = false;
                 }
                 render() {
                     if (this.data.type == 'C') {
@@ -120,22 +122,46 @@
                     this.data.y += this.data.vec.y * dt;
 
                     if (isOOBc(this.data)) {
-                        this.needDelete = true;
+                        this.data.needDelete = true;
                     }
 
                     // console.log(bullets);
-                    bullets.forEach(x=>{
-                        if (collide(this.data, x)) {
-                            this.needDelete = true;
+                    if (this.data.destructable) {
+                        bullets.forEach(x=>{
+                            if (collide(this.data, x)) {
+                                this.data.needDelete = true;
+                                x.needDelete = true;
+                                // console.log(x.needDelete);
+                            }
+                        })
+                    }
+
+                    if (this.data.onHitByBullet) {
+                        bullets.forEach(x=>{
+                            if (collide(this.data, x)) {
+                                (this.data.onHitByBullet)(this.data, x);
+                            }
+                        })
+                    }
+
+                    if (this.data.onHitPlayer) {
+                        if (collide(this.data, pl)) {
+                            (this.data.onHitPlayer)(this.data);
                         }
-                    })
+                    }
+
+                    if (this.data.onHitSin) {
+                        if (collideSin(this.data)) {
+                            (this.data.onHitSin)(this.data);
+                        }
+                    }
                 }
             }
 
             class PolarProjectile {
                 constructor(data) {
                     this.data = data;
-                    this.needDelete = false;
+                    this.data.needDelete = false;
                     
                     this.r = this.data.start.rad;
                     this.theta = this.data.start.theta;
@@ -163,14 +189,37 @@
                     // }
 
                     if (isOOBc(this.data)) {
-                        this.needDelete = true;
+                        this.data.needDelete = true;
                     }
 
-                    bullets.forEach(x=>{
-                        if (collide(this, x)) {
-                            this.needDelete = true;
+                    if (this.data.destructable) {
+                        bullets.forEach(x=>{
+                            if (collide(this, x)) {
+                                this.data.needDelete = true;
+                                x.needDelete = true;
+                            }
+                        })
+                    }
+
+                    if (this.data.onHitByBullet) {
+                        bullets.forEach(x=>{
+                            if (collide(this.data, x)) {
+                                (this.data.onHitByBullet)(this.data, x);
+                            }
+                        })
+                    }
+
+                    if (this.data.onHitPlayer) {
+                        if (collide(this.data, pl)) {
+                            (this.data.onHitPlayer)(this.data);
                         }
-                    })
+                    }
+
+                    if (this.data.onHitSin) {
+                        if (collideSin(this.data)) {
+                            (this.data.onHitSin)(this.data);
+                        }
+                    }
                 }
             }
 
@@ -187,6 +236,10 @@
                         return p.x < (q.x + q.w) && (p.x + p.w) > q.x && p.y < (q.y + q.h) && (p.y + p.h) > q.y;
                     }
                 }
+            }
+
+            function collideSin(proj) {
+                return Math.hypot(sinPos.x-proj.x, sinPos.y-proj.y) <= (proj.r, sinRad);
             }
 
             let entities = [];
@@ -211,6 +264,11 @@
 
                     if (isOOBc(this)) {
                         this.needDelete = true;
+                    }
+
+                    if (collideSin(this)) {
+                        this.needDelete = true;
+                        console.log('Player hit the sin');
                     }
                 }
                 render() {
@@ -380,13 +438,13 @@
                     x.tick(dt);
                 });
                 
-                entities = entities.filter(x=>!x.needDelete);
+                entities = entities.filter(x=>!x.data.needDelete);
 
                 bullets.forEach(x=>{
                     x.tick(dt);
                 })
 
-                bullets = bullets.filter(x=>!x.needToDelete);
+                bullets = bullets.filter(x=>!x.needDelete);
 
                 (ticks[currentScreen])(dt)
             }
@@ -405,8 +463,7 @@
                     circle(pl.x, pl.y, pl.r, 'white');
                 },
                 ()=>{
-                    ctx.fillStyle = 'red';
-                    ctx.fillRect(sinPos.x, sinPos.y, sinSize.w, sinSize.h);
+                    circle(sinPos.x, sinPos.y, sinRad, 'blue');
 
                     entities.forEach(x=>{
                         x.render();
