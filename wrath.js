@@ -38,7 +38,12 @@ function wrathTick(dt) {
                     proj.needDelete = true;
                     ent.needDelete = true;
                 }
-            }
+            },
+            onHitPlayer: proj => {
+                proj.needDelete = true;
+                pl.damage(proj.dmg)
+            },
+            dmg: 2
         }))
         entities.push(new Projectile({
             type: 'C',
@@ -62,7 +67,12 @@ function wrathTick(dt) {
                 vec: new V(Math.cos(2*Math.PI*(x/randAmt) + randOff), Math.sin(2*Math.PI*(x/randAmt) + randOff)).scale(0.2),
                 color: 'red',
                 destructable: true,
-                sig: 'shards'
+                sig: 'shards',
+                onHitPlayer: proj => {
+                    proj.needDelete = true;
+                    pl.damage(proj.dmg)
+                },
+                dmg: 1
             }))
         }
 

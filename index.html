@@ -35,7 +35,13 @@
                 highMaxSpd: 0.4,
                 lowMaxSpd: 0.3,
                 type: 'C',
-                bulletMass: 25
+                bulletMass: 25,
+                maxHp: 20,
+                hp: 20,
+                damage: dmg => {
+                    pl.hp -= dmg;
+                    pl.hp = Math.max(0, pl.hp);
+                }
             };
 
             const screens = {
@@ -119,7 +125,7 @@
                     this.data = data;
                     this.data.needDelete = false;
                     this.data.id = uniqueID.next().value;
-                    console.log(this.data.id);
+                    // console.log(this.data.id);
                 }
                 render() {
                     if (this.data.type == 'C') {
@@ -486,9 +492,31 @@
                 ctx.fill();
             }
 
+            function drawPlayer() {
+                circle(pl.x, pl.y, pl.r, 'white');
+
+                ctx.fillStyle = 'black';
+
+                ctx.beginPath();
+                ctx.moveTo(pl.x, pl.y);
+                ctx.lineTo(pl.x - Math.cos(2*Math.PI*(1-pl.hp/pl.maxHp)), pl.y + Math.sin(2*Math.PI*(1-pl.hp/pl.maxHp)))
+                ctx.arc(pl.x, pl.y, pl.r, 0, 2*Math.PI*(1-pl.hp/pl.maxHp));
+                ctx.lineTo(pl.x, pl.y);
+                ctx.fill();
+                ctx.closePath();
+
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(pl.x, pl.y, pl.r, 0, 2*Math.PI);
+                ctx.closePath();
+                ctx.stroke();
+            }
+
             const renders = [
                 ()=>{
-                    circle(pl.x, pl.y, pl.r, 'white');
+                    // circle(pl.x, pl.y, pl.r, 'white');
+                    drawPlayer();
                 },
                 ()=>{
                     circle(sinPos.x, sinPos.y, sinRad, 'blue');
@@ -501,7 +529,8 @@
                         x.render();
                     })
 
-                    circle(pl.x, pl.y, pl.r, 'white');
+                    // circle(pl.x, pl.y, pl.r, 'white');
+                    drawPlayer();
                 }
             ]
 
